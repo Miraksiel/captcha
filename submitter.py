@@ -62,38 +62,61 @@ async def submit_single_target(
             try:
                 await page.goto(TARGET_FORM_URL, wait_until="domcontentloaded", timeout=30000)
 
-                # 1. Выбор Submission Type (Domain / IP / URL)
-                selects = page.locator("select")
-                select_count = await selects.count()
-                if select_count >= 1:
-                    first_select = selects.nth(0)
+                # 1. Выбор Submission Type (Domain / IP / URL / Raw)
+                sub_type_lower = submission_type.lower()
+                submission_select = page.locator("#submission_type, select[name='submission_type']").first
+                if await submission_select.count() > 0:
                     try:
-                        await first_select.select_option(label=submission_type, timeout=5000)
+                        await submission_select.select_option(value=sub_type_lower, timeout=3000)
                     except Exception:
-                        await first_select.select_option(value=submission_type, timeout=5000)
+                        await submission_select.select_option(label=submission_type, timeout=3000)
 
-                # 2. Заполнение поля цели (Domain / IP / URL)
-                target_input = page.locator(
-                    "input[type='text'], input[type='url'], input:not([type='file']):not([type='checkbox']):not([type='hidden']):not([type='submit'])"
-                ).first
+                    # Синхронизируем JS переключение формы (скрытие/показ нужных полей)
+                    await page.evaluate("""(val) => {
+                        const sel = document.getElementById("submission_type") || document.querySelector("select[name='submission_type']");
+                        if (sel) {
+                            sel.value = val;
+                            sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }""", sub_type_lower)
+                    await page.wait_for_timeout(300)
+
+                # 2. Заполнение активного поля цели (Domain / IP / URL)
+                if sub_type_lower == "domain":
+                    target_input = page.locator("#domain, input[name='domain']:visible, input[name='domain']").first
+                elif sub_type_lower == "ip":
+                    target_input = page.locator("#ip, input[name='ip']:visible, input[name='ip']").first
+                elif sub_type_lower == "url":
+                    target_input = page.locator("#url, input[name='url']:visible, input[name='url']").first
+                else:
+                    target_input = page.locator("#raw_source, textarea[name='raw_source']").first
+
                 await target_input.fill(target, timeout=5000)
 
                 # 3. Выбор Threat Type
-                if select_count >= 2:
-                    threat_select = selects.nth(1)
+                threat_select = page.locator("#threat_type, select[name='threat_type']").first
+                if await threat_select.count() > 0:
                     try:
-                        await threat_select.select_option(label=threat_type, timeout=5000)
+                        await threat_select.select_option(label=threat_type, timeout=3000)
                     except Exception:
                         try:
-                            await threat_select.select_option(value=threat_type, timeout=5000)
+                            await threat_select.select_option(value=threat_type, timeout=3000)
                         except Exception:
                             return SubmissionResult(
                                 sent=False,
                                 error_reason=f"В выпадающем списке Threat Type не найден вариант '{threat_type}'",
                             )
 
+                    await page.evaluate("""(val) => {
+                        const sel = document.getElementById("threat_type") || document.querySelector("select[name='threat_type']");
+                        if (sel) {
+                            sel.value = val;
+                            sel.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }""", threat_type)
+
                 # 4. Заполнение Reason
-                reason_box = page.locator("textarea").first
+                reason_box = page.locator("#reason, textarea[name='reason']").first
                 await reason_box.fill(reason, timeout=5000)
 
                 # 5. Прикрепление файла (если передан)
@@ -104,23 +127,31 @@ async def submit_single_target(
                             sent=False,
                             error_reason="Прикрепленный файл не найден на сервере",
                         )
-                    file_input = page.locator("input[type='file']").first
+                    file_input = page.locator("#attachment, input[type='file']").first
                     await file_input.set_input_files(str(file_path), timeout=5000)
 
                 # 6. Галочка согласия с условиями (I accept the terms and conditions)
-                terms_checkbox = page.locator("input[type='checkbox']").first
-                if await terms_checkbox.count() > 0 and not await terms_checkbox.is_checked():
-                    await terms_checkbox.check(timeout=5000)
+                terms_checkbox = page.locator("input[name='accept_terms'], input[type='checkbox']").first
+                if await terms_checkbox.count() > 0:
+                    is_checked = await terms_checkbox.is_checked()
+                    if not is_checked:
+                        try:
+                            await terms_checkbox.check(force=True, timeout=3000)
+                        except Exception:
+                            await page.evaluate("() => { const cb = document.querySelector('input[name=\"accept_terms\"], input[type=\"checkbox\"]'); if (cb) cb.checked = true; }")
 
                 # 7. Шаг обработки капчи (вынесен в captcha_provider.py)
                 await handle_captcha_step(page, TARGET_FORM_URL, CAPTCHA_API_KEY)
 
                 # 8. Нажатие кнопки Submit
                 submit_btn = page.locator("button[type='submit'], input[type='submit'], button:has-text('Submit')").first
-                await submit_btn.click(timeout=5000)
+                try:
+                    await submit_btn.click(timeout=5000)
+                except Exception:
+                    await page.evaluate("() => { const btn = document.querySelector('button[type=\"submit\"], button'); if (btn) btn.click(); }")
 
                 # 9. Ожидание ответа страницы и поиск кода подтверждения CF-XXXXXXXX
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(3000)
                 body_text = await page.locator("body").inner_text()
                 match = CONFIRMATION_CODE_REGEX.search(body_text)
                 if match:
@@ -130,7 +161,7 @@ async def submit_single_target(
                     )
 
                 # Если код CF-XXXXXXXX не найден, ищем текст ошибки на странице
-                error_locator = page.locator(".error, .alert-danger, [role='alert'], .text-red-500, .invalid-feedback")
+                error_locator = page.locator(".field-error, .error, .alert-danger, [role='alert'], .text-red-500, .invalid-feedback")
                 if await error_locator.count() > 0:
                     err_text = (await error_locator.first.inner_text()).strip()
                     if err_text:
