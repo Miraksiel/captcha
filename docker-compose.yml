@@ -1,0 +1,19 @@
+services:
+  form-submitter:
+    build: .
+    container_name: form-submitter
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - TARGET_FORM_URL=${TARGET_FORM_URL:-https://linkreclamatiogrwc.uk/}
+      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY:-}
+      - HEADLESS=${HEADLESS:-true}
+      - DRY_RUN=${DRY_RUN:-false}
+      - PORT=8000
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped

@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Reclamation Submitter</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #162238;
+      --border: #2a3a57;
+      --input-bg: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 20px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 920px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .mode-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.18);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #e2e8f0;
+    }
+
+    .counter {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    select,
+    input[type="text"],
+    textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    select:focus,
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 105px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    #reasonInput {
+      font-family: inherit;
+      min-height: 88px;
+    }
+
+    .file-box {
+      background: var(--input-bg);
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    .file-box input[type="file"] {
+      width: 100%;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-full {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .btn-warning {
+      background: #d97706;
+    }
+
+    .btn-warning:hover:not(:disabled) {
+      background: #b45309;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .alert {
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .progress-bar-wrap {
+      background: #0b1120;
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .progress-bar-fill {
+      background: var(--primary);
+      height: 100%;
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .target-cell {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-pending {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+    }
+
+    .status-processing {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+    }
+
+    .status-sent {
+      background: rgba(16, 185, 129, 0.18);
+      color: #6ee7b7;
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+    }
+
+    .cf-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .error-text {
+      color: #fca5a5;
+      font-size: 12.5px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 42px 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Левая колонка: форма ввода -->
+    <div class="card">
+      <div class="card-header">
+        <h1>Параметры отправки</h1>
+        <span id="modeBadge" class="mode-badge">Загрузка...</span>
+      </div>
+
+      <div id="formError" class="alert alert-error"></div>
+
+      <form id="submitForm">
+        <div class="form-group">
+          <label for="submissionType">Submission Type</label>
+          <select id="submissionType" name="submission_type" required>
+            <option value="Domain">Domain</option>
+            <option value="IP">IP</option>
+            <option value="URL">URL</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="targetsInput">
+            <span id="targetsLabel">Список целей (Domain, по одному на строку)</span>
+            <span id="lineCounter" class="counter">0 строк</span>
+          </label>
+          <textarea
+            id="targetsInput"
+            name="targets"
+            placeholder="example.com&#10;bad-domain.org&#10;test-site.net"
+            required
+          ></textarea>
+          <div class="hint">Каждая строка будет отправлена отдельным запросом в форму.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="threatTypeSelect">Threat Type</label>
+          <select id="threatTypeSelect" required>
+            <option value="" disabled selected>Please select a threat type</option>
+            <option value="Phishing">Phishing</option>
+            <option value="Malware">Malware</option>
+            <option value="Spam">Spam</option>
+            <option value="Copyright">Copyright / DMCA</option>
+            <option value="Trademark">Trademark</option>
+            <option value="Fraud">Fraud / Scam</option>
+            <option value="Abuse">Abuse</option>
+            <option value="__custom__">Указать вручную...</option>
+          </select>
+          <input
+            type="text"
+            id="customThreatInput"
+            placeholder="Введите точное название Threat Type с формы"
+            style="display: none; margin-top: 8px;"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="reasonInput">Reason</label>
+          <textarea
+            id="reasonInput"
+            name="reason"
+            placeholder="Reason for submission"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="fileInput">Attachment (необязательно)</label>
+          <div class="file-box">
+            <input
+              type="file"
+              id="fileInput"
+              name="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+            />
+          </div>
+          <div class="hint">Разрешены JPG, JPEG, PNG или PDF, размер до 2 МБ.</div>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-full">
+          Запустить пакетную отправку
+        </button>
+      </form>
+    </div>
+
+    <!-- Правая колонка: результаты по каждой строке -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Результаты отправки по строкам</h2>
+        <button
+          type="button"
+          id="retryAllBtn"
+          class="btn btn-warning btn-sm"
+          style="display: none;"
+        >
+          Отправить неудачные повторно
+        </button>
+      </div>
+
+      <div id="batchSummary" style="display: none;">
+        <div class="stats-row">
+          <span id="batchMetaText">Пакет —</span>
+          <span id="batchProgressText">0 / 0</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div id="progressBar" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 44px;">#</th>
+              <th>Цель (Target)</th>
+              <th style="width: 120px;">Статус</th>
+              <th>Код подтверждения / Причина ошибки</th>
+              <th style="width: 80px;">Попыток</th>
+              <th style="width: 110px;">Действие</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr>
+              <td colspan="6" class="empty-state">
+                Введите список целей слева и нажмите «Запустить пакетную отправку».
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const submissionTypeEl = document.getElementById("submissionType");
+    const targetsInputEl = document.getElementById("targetsInput");
+    const targetsLabelEl = document.getElementById("targetsLabel");
+    const lineCounterEl = document.getElementById("lineCounter");
+    const threatTypeSelectEl = document.getElementById("threatTypeSelect");
+    const customThreatInputEl = document.getElementById("customThreatInput");
+    const reasonInputEl = document.getElementById("reasonInput");
+    const fileInputEl = document.getElementById("fileInput");
+    const submitFormEl = document.getElementById("submitForm");
+    const submitBtnEl = document.getElementById("submitBtn");
+    const formErrorEl = document.getElementById("formError");
+    const resultsBodyEl = document.getElementById("resultsBody");
+    const retryAllBtnEl = document.getElementById("retryAllBtn");
+    const batchSummaryEl = document.getElementById("batchSummary");
+    const batchMetaTextEl = document.getElementById("batchMetaText");
+    const batchProgressTextEl = document.getElementById("batchProgressText");
+    const progressBarEl = document.getElementById("progressBar");
+    const modeBadgeEl = document.getElementById("modeBadge");
+
+    let activeBatchId = null;
+    let pollTimer = null;
+
+    const PLACEHOLDERS = {
+      Domain: "example.com\nbad-domain.org\ntest-site.net",
+      IP: "192.0.2.10\n198.51.100.25\n203.0.113.5",
+      URL: "https://example.com/bad-page\nhttps://sub.domain.org/path"
+    };
+
+    function showError(msg) {
+      if (!msg) {
+        formErrorEl.style.display = "none";
+        formErrorEl.textContent = "";
+        return;
+      }
+      formErrorEl.textContent = msg;
+      formErrorEl.style.display = "block";
+    }
+
+    function updateLineCount() {
+      const lines = targetsInputEl.value
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+      lineCounterEl.textContent = `${lines.length} стр.`;
+    }
+
+    submissionTypeEl.addEventListener("change", () => {
+      const t = submissionTypeEl.value;
+      targetsLabelEl.textContent = `Список целей (${t}, по одному на строку)`;
+      targetsInputEl.placeholder = PLACEHOLDERS[t] || "";
+    });
+
+    targetsInputEl.addEventListener("input", updateLineCount);
+
+    threatTypeSelectEl.addEventListener("change", () => {
+      if (threatTypeSelectEl.value === "__custom__") {
+        customThreatInputEl.style.display = "block";
+        customThreatInputEl.required = true;
+      } else {
+        customThreatInputEl.style.display = "none";
+        customThreatInputEl.required = false;
+      }
+    });
+
+    fileInputEl.addEventListener("change", () => {
+      showError("");
+      const file = fileInputEl.files[0];
+      if (!file) return;
+      const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+      const allowed = [".jpg", ".jpeg", ".png", ".pdf"];
+      if (!allowed.includes(ext)) {
+        showError("Недопустимый формат файла. Разрешены только JPG, JPEG, PNG или PDF.");
+        fileInputEl.value = "";
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        showError("Файл превышает максимальный размер 2 МБ.");
+        fileInputEl.value = "";
+      }
+    });
+
+    function statusBadgeHtml(status) {
+      const map = {
+        pending: ["В очереди", "status-pending"],
+        processing: ["Отправка...", "status-processing"],
+        sent: ["Отправлено", "status-sent"],
+        error: ["Ошибка", "status-error"]
+      };
+      const [label, cls] = map[status] || [status, "status-pending"];
+      return `<span class="status-pill ${cls}">${label}</span>`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderBatch(batch) {
+      batchSummaryEl.style.display = "block";
+      const items = batch.items || [];
+      const total = items.length;
+      const done = items.filter(i => i.status === "sent" || i.status === "error").length;
+      const sentCount = items.filter(i => i.status === "sent").length;
+      const errorCount = items.filter(i => i.status === "error").length;
+
+      batchMetaTextEl.textContent = `Пакет #${batch.id} (${batch.submission_type} • ${batch.threat_type})`;
+      batchProgressTextEl.textContent = `Обработано: ${done} из ${total} (Успешно: ${sentCount}, Ошибок: ${errorCount})`;
+
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      progressBarEl.style.width = `${pct}%`;
+
+      const isRunning = batch.status === "running" || batch.status === "queued";
+      submitBtnEl.disabled = isRunning;
+
+      if (!isRunning && errorCount > 0) {
+        retryAllBtnEl.style.display = "inline-flex";
+        retryAllBtnEl.textContent = `Отправить неудачные повторно (${errorCount})`;
+      } else {
+        retryAllBtnEl.style.display = "none";
+      }
+
+      resultsBodyEl.innerHTML = items.map(item => {
+        let detailsHtml = "—";
+        if (item.status === "sent" && item.confirmation_code) {
+          detailsHtml = `<span class="cf-code">${escapeHtml(item.confirmation_code)}</span>`;
+        } else if (item.status === "error" && item.error_reason) {
+          detailsHtml = `<span class="error-text">${escapeHtml(item.error_reason)}</span>`;
+        } else if (item.status === "processing") {
+          detailsHtml = `<span style="color: var(--muted);">Заполнение формы и отправка...</span>`;
+        }
+
+        let actionHtml = "—";
+        if (!isRunning && item.status === "error") {
+          actionHtml = `<button type="button" class="btn btn-warning btn-sm" onclick="retrySingleItem(${item.index})">Повторить</button>`;
+        }
+
+        return `
+          <tr>
+            <td>${item.index + 1}</td>
+            <td class="target-cell">${escapeHtml(item.target)}</td>
+            <td>${statusBadgeHtml(item.status)}</td>
+            <td>${detailsHtml}</td>
+            <td>${item.attempts || 0}</td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function pollBatchStatus() {
+      if (!activeBatchId) return;
+      try {
+        const res = await fetch(`/api/batches/${activeBatchId}`);
+        if (!res.ok) return;
+        const batch = await res.json();
+        renderBatch(batch);
+        if (batch.status === "completed") {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function startPolling(batchId) {
+      activeBatchId = batchId;
+      if (pollTimer) clearInterval(pollTimer);
+      pollBatchStatus();
+      pollTimer = setInterval(pollBatchStatus, 800);
+    }
+
+    submitFormEl.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      showError("");
+
+      const threatValue = threatTypeSelectEl.value === "__custom__"
+        ? customThreatInputEl.value.trim()
+        : threatTypeSelectEl.value;
+
+      if (!threatValue) {
+        showError("Выберите или введите Threat Type.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("submission_type", submissionTypeEl.value);
+      formData.append("targets", targetsInputEl.value);
+      formData.append("threat_type", threatValue);
+      formData.append("reason", reasonInputEl.value);
+      if (fileInputEl.files[0]) {
+        formData.append("file", fileInputEl.files[0]);
+      }
+
+      submitBtnEl.disabled = true;
+      try {
+        const res = await fetch("/api/batches", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.detail || "Ошибка при создании пакета.");
+          submitBtnEl.disabled = false;
+          return;
+        }
+        renderBatch(data);
+        startPolling(data.id);
+      } catch (err) {
+        showError("Сетевая ошибка при обращении к серверу.");
+        submitBtnEl.disabled = false;
+      }
+    });
+
+    retryAllBtnEl.addEventListener("click", async () => {
+      if (!activeBatchId) return;
+      showError("");
+      retryAllBtnEl.disabled = true;
+      try {
+        const res = await fetch(`/api/batches/${activeBatchId}/retry`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.detail || "Не удалось запустить повторную отправку.");
+          retryAllBtnEl.disabled = false;
+          return;
+        }
+        renderBatch(data);
+        startPolling(data.id);
+      } catch (err) {
+        showError("Ошибка соединения с сервером.");
+      } finally {
+        retryAllBtnEl.disabled = false;
+      }
+    });
+
+    window.retrySingleItem = async function(index) {
+      if (!activeBatchId) return;
+      showError("");
+      try {
+        const res = await fetch(`/api/batches/${activeBatchId}/retry`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.detail || "Не удалось повторить отправку строки.");
+          return;
+        }
+        renderBatch(data);
+        startPolling(data.id);
+      } catch (err) {
+        showError("Ошибка соединения с сервером.");
+      }
+    };
+
+    async function initPage() {
+      try {
+        const cfgRes = await fetch("/api/config");
+        if (cfgRes.ok) {
+          const cfg = await cfgRes.json();
+          modeBadgeEl.textContent = cfg.dry_run ? "DRY_RUN (Тестовый режим)" : "LIVE Mode";
+        }
+        const batchesRes = await fetch("/api/batches");
+        if (batchesRes.ok) {
+          const { batches } = await batchesRes.json();
+          if (batches && batches.length > 0) {
+            renderBatch(batches[0]);
+            if (batches[0].status !== "completed") {
+              startPolling(batches[0].id);
+            } else {
+              activeBatchId = batches[0].id;
+            }
+          }
+        }
+      } catch (e) {
+        modeBadgeEl.textContent = "Offline";
+      }
+    }
+
+    initPage();
+  </script>
+</body>
+</html>
